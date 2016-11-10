@@ -951,15 +951,70 @@ sub lat_lon {
   return ($lat && $lon) ? [$lat, $lon] : [];
 }
 
+# return iso8601 format
 sub collection_date {
   my ($self) = @_;
-  my $time_set = [];
-  foreach my $tag (('collection_date', 'collection_time', 'collection_timezone')) {
-    last if (($tag eq 'collection_timezone') && (@$time_set == 0));
-    my $val = $self->get_metadata_value($tag, 'sample');
-    if ($val) { push @$time_set, $val; }
+  
+  
+  my $collection_date_value = $self->get_metadata_value('collection_date', 'sample');
+  my $collection_time_value = $self->get_metadata_value('collection_time', 'sample');
+  my $collection_timezone_value = $self->get_metadata_value('collection_timezone', 'sample');
+  
+  
+  ### date
+  my $collection_date="";
+      
+  unless($collection_date_value) {
+      return "";
   }
-  return join(" ", @$time_set);
+  $collection_date = $collection_date_value;
+  
+  ### time
+  unless($collection_time_value) {
+      return $collection_date;
+  }
+  
+  $collection_date .= "T" . $collection_time_value;
+  
+  
+  ### timezone
+  unless($collection_timezone_value) {
+      return $collection_date;
+  }
+  
+  # replace any UTC string
+  if ($collection_timezone_value =~ /^UTC/) {
+      $collection_date .= "Z";
+      return $collection_date;
+  }
+  
+  # day needs to have two digits
+  my ($sign, $day) = $collection_timezone_value =~ /^([+-])(\d+)/;
+  
+  unless (defined($sign)) {
+      return $collection_date."ERROR";
+  }
+  
+  unless (defined($day)) {
+      return $collection_date."ERROR";
+  }
+  
+  if ($day < 10) {
+      $collection_date .= $sign."0".$day;
+  } else {
+      $collection_date .= $sign.$day;
+  }
+  
+  
+  return $collection_date;
+  
+  #my $time_set = [];
+  #foreach my $tag (('collection_date', 'collection_time', 'collection_timezone')) {
+  #  last if (($tag eq 'collection_timezone') && (@$time_set == 0));
+  #  my $val = $self->get_metadata_value($tag, 'sample');
+  #  if ($val) { push @$time_set, $val; }
+  #}
+  #return join(" ", @$time_set);
 }
 
 sub env_package_type {
