@@ -982,29 +982,66 @@ sub collection_date {
       return $collection_date;
   }
   
-  # replace any UTC string
+  # remove UTC string
   if ($collection_timezone_value =~ /^UTC/) {
-      $collection_date .= "Z";
-      return $collection_date;
+      
+      
+      my ($utc_suffix) = $collection_timezone_value =~ /^UTC\s*(.+)/ ;
+      
+      if (defined($utc_suffix)) {
+          $collection_timezone_value = $utc_suffix;
+      } else {
+          return $collection_date."Z";
+      }
   }
   
-  # day needs to have two digits
-  my ($sign, $day) = $collection_timezone_value =~ /^([+-])(\d+)/;
   
+  
+  # extract sign
+  my ($sign, $day_string) = $collection_timezone_value =~ /^([+-])(.*)/;
+
   unless (defined($sign)) {
-      return $collection_date."ERROR";
+      return $collection_date."ERROR timezone has no sign in ".$collection_timezone_value;
   }
   
-  unless (defined($day)) {
-      return $collection_date."ERROR";
+  unless (defined($day_string)) {
+      return $collection_date."ERROR no string after sign in ".$collection_timezone_value;
   }
-  
-  if ($day < 10) {
-      $collection_date .= $sign."0".$day;
+
+  my ($hour, $minute);
+  if ($day_string =~ /:/) {
+      ($hour, $minute) = $day_string =~  /^(\d+):(\d+)$/;
   } else {
-      $collection_date .= $sign.$day;
+      ($hour, $minute) = $day_string =~  /^(\d+)(\d\d)$/;
+      
+      unless (defined($hour)) {
+          ($hour) = $day_string =~  /^(\d+)$/;
+          if (defined($hour)) {
+              $minute = 0;
+          }
+      }
+      
   }
   
+  unless (defined $hour) {
+      return $collection_date."ERROR hour not parsed in ".$day_string;
+  }
+  
+  if ($hour > 12) {
+      return $collection_date."ERROR hour > 12 in ".$day_string;
+  }
+  
+  unless (defined $minute) {
+      return $collection_date."ERROR minute not parsed in ".$day_string;
+  }
+  if ($minute > 60) {
+      return $collection_date."ERROR minute > 60 in ".$day_string;
+  }
+  
+  # prefix hour and minute with zero if needed
+  $collection_date .= $sign.sprintf("%02d", $hour).sprintf("%02d", $minute);
+  
+ 
   
   return $collection_date;
   
